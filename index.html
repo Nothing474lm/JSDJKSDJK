@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Canvas: Del Píxel a la Persuasión</title>
+  
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Fuentes: Playfair Display (Serif) & Inter (Sans-Serif) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- React y Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #1c1c1c; }
+    h1, h2, h3, h4, .font-serif { font-family: 'Playfair Display', serif; }
+    
+    /* Animaciones base */
+    .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    .fade-out { animation: fadeOut 0.4s ease-in forwards; }
+    .scale-in { animation: scaleIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards; }
+    .scale-out { animation: scaleOut 0.4s cubic-bezier(0.755, 0.05, 0.855, 0.06) forwards; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    @keyframes scaleOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
+
+    /* Animación para revelado en scroll */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s cubic-bezier(0.17, 0.55, 0.55, 1), transform 0.8s cubic-bezier(0.17, 0.55, 0.55, 1);
+      transition-delay: 0.1s;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Para escalonar animaciones de hijos */
+    .reveal.visible .reveal-child {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-child {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+    .reveal.visible .reveal-child:nth-child(1) { transition-delay: 0.2s; }
+    .reveal.visible .reveal-child:nth-child(2) { transition-delay: 0.3s; }
+    .reveal.visible .reveal-child:nth-child(3) { transition-delay: 0.4s; }
+    .reveal.visible .reveal-child:nth-child(4) { transition-delay: 0.5s; }
+    .reveal.visible .reveal-child:nth-child(5) { transition-delay: 0.6s; }
+    .reveal.visible .reveal-child:nth-child(6) { transition-delay: 0.7s; }
+
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // =============== DATOS DE LA APLICACIÓN ===============
+    const modules = [
+      {
+        id: 'campanas',
+        icon: 'send',
+        title: "Campañas en Redes Sociales",
+        subtitle: "Diseñando ecosistemas visuales.",
+        description: "Una campaña exitosa en redes sociales va más allá de posts aislados. Se trata de construir un ecosistema visual coherente que cuente una historia a través de diferentes formatos y plataformas, adaptándose al lenguaje de cada una.",
+        keyConcepts: ["Estrategia de Contenido Visual", "Adaptacion de Formatos", "Cohesion de Campaña", "Diseño para Interaccion", "Customer Journey Mapping", "Modelo AIDA en Diseño"],
+        practice: {
+          deepDive: "La clave de una campaña cohesiva es tener un 'Key Visual' fuerte (una imagen o concepto central) y luego 'deconstruirlo' para cada plataforma. Instagram puede enfocarse en la estética, TikTok en el entretenimiento y LinkedIn en el valor profesional, pero todos deben sentirse parte del mismo universo de marca.",
+          exercise: "Elige una marca y analiza su última campaña en Instagram. Identifica el Key Visual. ¿Cómo lo adaptan a Stories vs. el Feed? ¿Usan el mismo tono visual en los Reels? Anota tus observaciones.",
+          Task: () => <textarea placeholder="Describe el Key Visual y las adaptaciones que observaste..." className="w-full h-24 p-2 border rounded-md text-sm bg-white"></textarea>
+        },
+        LabComponent: function FormatAdapter() {
+            const [format, setFormat] = useState('feed');
+            const formats = {
+                feed: { w: 'w-48', h: 'h-48', text: 'Post Cuadrado (1:1)' },
+                story: { w: 'w-32', h: 'h-56', text: 'Story (9:16)' },
+                banner: { w: 'w-64', h: 'h-16', text: 'Banner (4:1)' }
+            };
+            const currentFormat = formats[format];
+            return (
+                <div className="p-8 flex flex-col items-center justify-center h-full">
+                    <div className={`bg-blue-200 rounded-lg flex items-center justify-center transition-all duration-300 ${currentFormat.w} ${currentFormat.h}`}>
+                        <p className="text-blue-800 text-xs text-center font-semibold">{currentFormat.text}</p>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                        <button onClick={() => setFormat('feed')} className={`p-2 rounded-md ${format === 'feed' ? 'bg-black text-white' : 'hover:bg-gray-200'}`}><i data-lucide="square" className="w-5 h-5"></i></button>
+                        <button onClick={() => setFormat('story')} className={`p-2 rounded-md ${format === 'story' ? 'bg-black text-white' : 'hover:bg-gray-200'}`}><i data-lucide="rectangle-vertical" className="w-5 h-5"></i></button>
+                        <button onClick={() => setFormat('banner')} className={`p-2 rounded-md ${format === 'banner' ? 'bg-black text-white' : 'hover:bg-gray-200'}`}><i data-lucide="rectangle-horizontal" className="w-5 h-5"></i></button>
+                    </div>
+                </div>
+            )
+        }
+      },
+      {
+        id: 'performance',
+        icon: 'mouse-pointer-click',
+        title: "Diseño para Performance",
+        subtitle: "Creando anuncios que convierten.",
+        description: "El diseño para performance (o marketing de resultados) tiene un objetivo claro: generar una acción medible (un clic, una compra, un registro). Aquí, la estética está al servicio de la claridad y la persuasión.",
+        keyConcepts: ["Anatomía de un Anuncio Efectivo", "Jerarquía Visual para la Conversión", "Psicología del Color en CTAs", "Pruebas A/B Visuales"],
+        practice: {
+          deepDive: "El 90% de la información transmitida al cerebro es visual. En un anuncio, tienes 2 segundos para captar la atención. La jerarquía debe ser brutalmente clara: 1. Imagen/Video impactante. 2. Titular/Oferta potente. 3. Call-to-Action (CTA) inconfundible. Todo lo demás es ruido.",
+          exercise: "Te dan un titular: '50% de Descuento'. Diseña dos botones de CTA (Call-to-Action) diferentes para una prueba A/B. Piensa en el texto, el color y la forma. ¿Qué hipótesis quieres validar con cada uno?",
+          Task: function ABTestTask() {
+            return (
+                <div className="grid grid-cols-2 gap-4">
+                    <input type="text" placeholder="Texto del Botón A" className="p-2 border rounded-md text-sm" />
+                    <input type="text" placeholder="Texto del Botón B" className="p-2 border rounded-md text-sm" />
+                </div>
+            );
+          }
+        },
+        LabComponent: function CtaSimulator() {
+            const [cta, setCta] = useState({ text: 'Comprar Ahora', color: 'bg-blue-600' });
+            return (
+                <div className="p-8 flex flex-col items-center justify-center h-full bg-gray-800 text-white">
+                    <div className="w-64 h-32 bg-gray-700 rounded-lg flex flex-col items-center justify-center p-4">
+                        <p className="text-lg font-bold">Tu Producto Increíble</p>
+                        <button className={`mt-4 w-full py-2 rounded-md font-semibold transition-all duration-200 hover:scale-105 active:scale-100 ${cta.color}`}>{cta.text}</button>
+                    </div>
+                    <div className="flex gap-4 mt-4 text-xs">
+                        <button onClick={() => setCta(c => ({...c, color: 'bg-blue-600'}))} className="p-2 bg-blue-600 rounded">Azul</button>
+                        <button onClick={() => setCta(c => ({...c, color: 'bg-green-600'}))} className="p-2 bg-green-600 rounded">Verde</button>
+                        <button onClick={() => setCta(c => ({...c, color: 'bg-red-600'}))} className="p-2 bg-red-600 rounded">Rojo</button>
+                    </div>
+                </div>
+            );
+        }
+      },
+      {
+        id: 'email',
+        icon: 'mail',
+        title: "Diseño para Email Marketing",
+        subtitle: "Conquistando el espacio más personal.",
+        description: "Diseñar para el inbox es un desafío único. Debes ser visualmente atractivo, directo y funcional, todo mientras compites por la atención en un entorno saturado y te enfrentas a las limitaciones técnicas de los clientes de correo.",
+        keyConcepts: ["Estructura de Email Efectiva", "Diseño Responsivo y 'Mobile-First'", "Compatibilidad con Dark Mode", "CTAs Visuales y Textuales"],
+        practice: {
+          deepDive: "Un error fatal en email design es usar una sola imagen gigante como todo el contenido. Muchos clientes de correo bloquean las imágenes por defecto, por lo que tu mensaje nunca se verá. La mejor práctica es una mezcla de texto HTML en vivo, imágenes optimizadas y 'bulletproof buttons' (botones creados con código, no imágenes).",
+          exercise: "Analiza un email promocional que hayas recibido. ¿Funciona bien en móvil? ¿Qué pasa si desactivas las imágenes? ¿El CTA principal es claro y accesible? Haz una lista de 3 mejoras que le harías.",
+          Task: () => <textarea placeholder="1. Mejora A...&#10;2. Mejora B...&#10;3. Mejora C..." className="w-full h-24 p-2 border rounded-md text-sm bg-white"></textarea>
+        },
+        LabComponent: () => (
+             <div className="p-8 text-center">
+                 <h4 className="font-semibold mb-4">Anatomía de un Email</h4>
+                 <div className="w-48 mx-auto bg-white border rounded-lg text-left text-xs shadow-sm">
+                     <div className="p-2 bg-gray-100 font-bold border-b rounded-t-lg">Header (Logo)</div>
+                     <div className="p-2 h-16 border-b flex items-center justify-center text-gray-400">Hero Image</div>
+                     <div className="p-2 border-b">
+                         <p className="font-bold">Titular Atractivo</p>
+                         <p className="mt-1 text-gray-600">Texto principal del cuerpo...</p>
+                     </div>
+                     <div className="p-2 bg-blue-600 text-white text-center font-bold">Call to Action</div>
+                     <div className="p-2 text-gray-500 border-t rounded-b-lg">Footer (Redes, Unsubscribe)</div>
+                 </div>
+             </div>
+        )
+      },
+      {
+        id: 'motion',
+        icon: 'film',
+        title: "Motion Graphics para Marketing",
+        subtitle: "Dando vida a las marcas con After Effects.",
+        description: "El movimiento es la herramienta más poderosa para captar la atención en el entorno digital. Este módulo es una inmersión profunda en los principios y técnicas de After Effects para crear animaciones que comunican, deleitan y convierten.",
+        keyConcepts: ["Principios de Animación Aplicados", "Manejo de Keyframes y Curvas de Velocidad", "Animación de Texto y Formas (Shapes)", "Exportación Optimizada para Redes"],
+        practice: {
+          deepDive: "La diferencia entre una animación amateur y una profesional reside en el 'easing' (la aceleración y desaceleración de los keyframes). Un movimiento lineal se siente robótico. Un movimiento con 'ease-in' y 'ease-out' se siente natural y deliberado. Dominar el editor de gráficos de After Effects es el secreto para animaciones fluidas y de alta calidad.",
+          exercise: "Crea un storyboard simple (3-5 viñetas) para una animación de 10 segundos que presente un logo y un eslogan. Piensa en cómo cada elemento entra en escena y qué principio de animación usarías (ej. 'anticipación' antes de un movimiento rápido).",
+          Task: () => <p className="text-sm text-gray-600"><i>Dibuja tu storyboard en papel. Concéntrate en la secuencia y el ritmo del movimiento.</i></p>
+        },
+        LabComponent: function EasingSimulator() {
+            const [ease, setEase] = useState('ease-in-out');
+            const eases = {
+                'linear': 'linear',
+                'ease-in': 'cubic-bezier(0.42, 0, 1, 1)',
+                'ease-out': 'cubic-bezier(0, 0, 0.58, 1)',
+                'ease-in-out': 'cubic-bezier(0.42, 0, 0.58, 1)'
+            };
+            return (
+                <div className="p-8 flex flex-col items-center justify-center h-full">
+                    <style>{`
+                        .ball { animation: move 2s ${eases[ease]} infinite alternate; }
+                        @keyframes move { from { transform: translateX(-100px); } to { transform: translateX(100px); } }
+                    `}</style>
+                    <div className="w-full h-10 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-red-500 rounded-full ball"></div>
+                    </div>
+                    <div className="flex gap-2 mt-4 text-xs">
+                        {Object.keys(eases).map(e => (
+                            <button key={e} onClick={() => setEase(e)} className={`px-2 py-1 rounded ${ease === e ? 'bg-black text-white' : 'bg-gray-200'}`}>{e}</button>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+      }
+    ];
+
+    // =============== COMPONENTES ===============
+    const PracticeModal = ({ module, onClose }) => {
+        const [closing, setClosing] = useState(false);
+        const { practice } = module;
+        const PracticeTask = practice.Task;
+
+        const handleClose = () => {
+            setClosing(true);
+            setTimeout(onClose, 300);
+        };
+        
+        useEffect(() => {
+            const handleKeyDown = (e) => e.key === 'Escape' && handleClose();
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+        }, []);
+
+        return (
+            <div onClick={handleClose} className={`fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 ${closing ? 'fade-out' : 'fade-in'}`}>
+                <div onClick={e => e.stopPropagation()} className={`bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col ${closing ? 'scale-out' : 'scale-in'}`}>
+                    <header className="p-6 flex justify-between items-center border-b border-gray-200">
+                        <div className="flex items-center">
+                            <i data-lucide={module.icon} className="w-7 h-7 mr-4 text-black"></i>
+                            <h3 className="text-2xl font-bold font-serif">{module.title}</h3>
+                        </div>
+                        <button onClick={handleClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100"><i data-lucide="x" className="w-6 h-6"></i></button>
+                    </header>
+                    <main className="p-6 overflow-y-auto">
+                        <div className="mb-6">
+                            <h4 className="font-semibold text-lg mb-2 text-gray-800">Análisis Profundo</h4>
+                            <p className="text-gray-600 leading-relaxed">{practice.deepDive}</p>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold text-lg mb-2 text-gray-800">Ejercicio Práctico</h4>
+                            <p className="text-gray-600 leading-relaxed mb-4">{practice.exercise}</p>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <PracticeTask />
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        );
+    };
+
+    const BrandingProApp = () => {
+      const [currentModule, setCurrentModule] = useState(modules[0]);
+      const [isAnimating, setIsAnimating] = useState(false);
+      const [practiceModalModule, setPracticeModalModule] = useState(null);
+      const [scrolled, setScrolled] = useState(false);
+
+      // Efecto para el header con scroll
+      useEffect(() => {
+          const handleScroll = () => {
+              setScrolled(window.scrollY > 10);
+          };
+          window.addEventListener('scroll', handleScroll);
+          return () => window.removeEventListener('scroll', handleScroll);
+      }, []);
+      
+      // Efecto para animaciones en scroll
+      useEffect(() => {
+          const observer = new IntersectionObserver((entries) => {
+              entries.forEach(entry => {
+                  if (entry.isIntersecting) {
+                      entry.target.classList.add('visible');
+                  }
+              });
+          }, {
+              threshold: 0.1
+          });
+
+          const elementsToReveal = document.querySelectorAll('.reveal');
+          elementsToReveal.forEach(el => observer.observe(el));
+
+          return () => {
+              elementsToReveal.forEach(el => observer.unobserve(el));
+          };
+      }, []);
+
+
+      const selectModule = (module) => {
+        if (module.id !== currentModule.id) {
+          setIsAnimating(true);
+          setTimeout(() => {
+            setCurrentModule(module);
+            setIsAnimating(false);
+          }, 300);
+        }
+      };
+
+      useEffect(() => {
+        lucide.createIcons();
+      }, [currentModule, practiceModalModule]);
+
+      const LabComponent = currentModule.LabComponent;
+
+      return (
+        <div className="min-h-screen bg-gray-50">
+          {practiceModalModule && <PracticeModal module={practiceModalModule} onClose={() => setPracticeModalModule(null)} />}
+          
+          <header className={`fixed w-full top-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-lg border-b border-gray-200 shadow-sm' : 'bg-transparent'}`}>
+            <nav className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+              <h1 className="text-2xl font-bold font-serif">Digital Canvas</h1>
+              <div className="hidden md:flex items-center space-x-6">
+                <a href="#fundamentos" className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Campañas</a>
+                <a href="#proceso-campana" className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Proceso</a>
+                <a href="#redes-sociales" className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Redes</a>
+                <a href="#psicologia" className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Psicología</a>
+                <a href="#metricas" className="text-sm font-medium text-gray-600 hover:text-black transition-colors">Métricas</a>
+              </div>
+            </nav>
+          </header>
+
+          <main className="pt-24">
+            {/* Sección de Fundamentos (Interactiva) */}
+            <section id="fundamentos" className="py-20 px-6">
+              <div className="max-w-7xl mx-auto">
+                <div className="text-center max-w-3xl mx-auto mb-16 reveal">
+                    <h2 className="text-4xl md:text-5xl font-bold font-serif mb-4">Diseño Digital Avanzado</h2>
+                    <p className="text-lg text-gray-600">Una plataforma para dominar el diseño enfocado en marketing digital, redes sociales y la conversión.</p>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-10 lg:gap-16">
+                  {/* Navegación de Módulos */}
+                  <div className="md:w-1/3 reveal">
+                    <div className="space-y-3 sticky top-28">
+                      {modules.map((module) => (
+                        <button 
+                          key={module.id} 
+                          onClick={() => selectModule(module)}
+                          className={`w-full p-4 border rounded-lg transition-all duration-300 text-left flex items-start gap-4 group ${ currentModule.id === module.id ? 'bg-black text-white border-black shadow-lg scale-105' : 'bg-white hover:border-gray-400 hover:shadow-md hover:-translate-y-1'}`}
+                        >
+                          <i data-lucide={module.icon} className={`w-7 h-7 mt-1 flex-shrink-0 transition-transform duration-300 ${currentModule.id === module.id ? 'rotate-[-10deg]' : 'group-hover:text-blue-600'}`}></i>
+                          <div>
+                            <span className="font-semibold text-lg">{module.title}</span>
+                            <p className={`text-sm transition-colors ${currentModule.id === module.id ? 'text-gray-300' : 'text-gray-500'}`}>{module.subtitle}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contenido del Módulo */}
+                  <div className={`md:w-2/3 transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
+                    <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm reveal">
+                        <h3 className="text-3xl font-bold font-serif mb-4">{currentModule.title}</h3>
+                        <p className="text-gray-700 mb-6 leading-relaxed">{currentModule.description}</p>
+                        
+                        <h4 className="font-semibold mb-3">Conceptos Clave:</h4>
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {currentModule.keyConcepts.map(concept => (
+                                <span key={concept} className="bg-gray-100 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-full transition-colors hover:bg-gray-200">{concept}</span>
+                            ))}
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-lg border border-gray-200 h-64 overflow-hidden">
+                            <LabComponent />
+                        </div>
+
+                        <button onClick={() => setPracticeModalModule(currentModule)} className="mt-6 w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-all text-sm font-semibold flex items-center justify-center gap-2 group hover:shadow-lg hover:-translate-y-1 duration-300">
+                            <span>Iniciar Práctica del Módulo</span>
+                            <i data-lucide="arrow-right" className="w-4 h-4 transition-transform group-hover:translate-x-1"></i>
+                        </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* SECCIÓN: PROCESO DE CAMPAÑA PUBLICITARIA */}
+            <section id="proceso-campana" className="py-20 px-6 bg-gray-800 text-white">
+                <div className="max-w-5xl mx-auto reveal">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold font-serif mb-4">El Proceso de una Campaña Publicitaria</h2>
+                        <p className="text-lg text-gray-400">Del brief a los resultados: el flujo de trabajo profesional para crear campañas que impactan.</p>
+                    </div>
+                    <div className="relative space-y-12">
+                        <div className="absolute left-8 top-2 h-full border-l-2 border-dashed border-blue-400/30"></div>
+                        {[
+                            { num: "01", title: "Estrategia y Briefing", description: "Todo empieza aquí. Se define el objetivo (¿qué queremos lograr?), el público (¿a quién le hablamos?), el mensaje clave y los KPIs (¿cómo mediremos el éxito?). El diseñador debe participar para entender el núcleo del reto." },
+                            { num: "02", title: "Conceptualización y 'Big Idea'", description: "Lluvia de ideas para encontrar un concepto creativo potente y memorable que conecte con la audiencia. Se crean moodboards para definir la dirección artística y el tono visual de la campaña." },
+                            { num: "03", title: "Dirección de Arte y Diseño", description: "Se traduce el concepto en un lenguaje visual. Se define la paleta de colores, tipografía, estilo fotográfico y se crea el 'Key Visual', la pieza central que unificará toda la campaña." },
+                            { num: "04", title: "Producción y Adaptación", description: "Se diseñan todas las piezas necesarias: banners para Google, posts para Instagram, videos para TikTok, etc. Cada pieza se adapta al formato y lenguaje específico de su plataforma." },
+                            { num: "05", title: "Lanzamiento, Medición y Optimización", description: "La campaña se publica. El trabajo del diseñador continúa: se analizan las métricas (CTR, Conversión), se realizan pruebas A/B con diferentes diseños y se optimizan las piezas para mejorar los resultados." }
+                        ].map(step => (
+                            <div key={step.num} className="flex items-start gap-6 pl-4 reveal-child">
+                                <div className="flex-shrink-0 w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-xl font-bold font-serif text-blue-400 z-10">{step.num}</div>
+                                <div className="pt-2">
+                                    <h4 className="text-2xl font-bold font-serif mb-2">{step.title}</h4>
+                                    <p className="text-gray-400">{step.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN: ESTRATEGIA EN REDES SOCIALES */}
+            <section id="redes-sociales" className="py-20 px-6 bg-white border-y border-gray-200">
+                <div className="max-w-5xl mx-auto reveal">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Estrategia y Comunicación en Redes Sociales</h2>
+                        <p className="text-lg text-gray-600">El éxito en redes sociales es una mezcla de arte y ciencia. Aprende a diseñar, hablar y conectar para construir una comunidad leal.</p>
+                    </div>
+                    <div className="space-y-16">
+                        <div>
+                            <h3 className="text-2xl font-bold font-serif mb-4 text-center">Los 4 Pilares del Contenido de Valor</h3>
+                            <p className="text-gray-700 mb-8 text-center max-w-2xl mx-auto">Toda tu comunicación debe girar en torno a estos cuatro pilares para mantener a tu audiencia interesada y comprometida.</p>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="p-6 bg-gray-50 border rounded-lg text-center reveal-child hover:shadow-lg hover:-translate-y-1 transition-all"><i data-lucide="graduation-cap" className="w-10 h-10 mx-auto mb-4 text-blue-600"></i><h4 className="font-semibold mb-2">Educar</h4><p className="text-sm text-gray-600">Enseña algo útil. Tutoriales, guías, tips. Te posiciona como un experto.</p></div>
+                                <div className="p-6 bg-gray-50 border rounded-lg text-center reveal-child hover:shadow-lg hover:-translate-y-1 transition-all"><i data-lucide="sparkles" className="w-10 h-10 mx-auto mb-4 text-yellow-600"></i><h4 className="font-semibold mb-2">Inspirar</h4><p className="text-sm text-gray-600">Comparte historias de éxito, citas, detrás de cámaras. Conecta a nivel emocional.</p></div>
+                                <div className="p-6 bg-gray-50 border rounded-lg text-center reveal-child hover:shadow-lg hover:-translate-y-1 transition-all"><i data-lucide="gamepad-2" className="w-10 h-10 mx-auto mb-4 text-red-600"></i><h4 className="font-semibold mb-2">Entretener</h4><p className="text-sm text-gray-600">Usa el humor, memes, encuestas. Hace tu marca más humana y memorable.</p></div>
+                                <div className="p-6 bg-gray-50 border rounded-lg text-center reveal-child hover:shadow-lg hover:-translate-y-1 transition-all"><i data-lucide="gem" className="w-10 h-10 mx-auto mb-4 text-green-600"></i><h4 className="font-semibold mb-2">Convencer</h4><p className="text-sm text-gray-600">Muestra tu producto, ofrece descuentos, comparte testimonios. Es la venta directa.</p></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-bold font-serif mb-4 text-center">Adaptando el Mensaje a Cada Plataforma</h3>
+                            <p className="text-gray-700 mb-8 text-center max-w-2xl mx-auto">No puedes publicar lo mismo en todas partes. Cada red social tiene su propio lenguaje y audiencia.</p>
+                            <ul className="space-y-4 max-w-2xl mx-auto">
+                                <li className="reveal-child flex items-start gap-4"><strong className="font-semibold w-24">Instagram:</strong> <span>El reino de la estética. Prioriza imágenes y videos de alta calidad. Usa Stories para contenido cercano y Reels para alcance masivo.</span></li>
+                                <li className="reveal-child flex items-start gap-4"><strong className="font-semibold w-24">TikTok:</strong> <span>Rápido, auténtico y entretenido. Videos cortos, tendencias y creatividad son la clave. El diseño pulcro a menudo es menos efectivo que el contenido "casero".</span></li>
+                                <li className="reveal-child flex items-start gap-4"><strong className="font-semibold w-24">LinkedIn:</strong> <span>La red profesional. El contenido debe ser informativo, valioso y centrado en la industria. Infografías, artículos y estudios de caso funcionan muy bien.</span></li>
+                                <li className="reveal-child flex items-start gap-4"><strong className="font-semibold w-24">X (Twitter):</strong> <span>Conversaciones en tiempo real. Textos cortos, hilos informativos y una voz rápida y ingeniosa son fundamentales.</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN DE PSICOLOGÍA MEJORADA */}
+            <section id="psicologia" className="py-20 px-6 bg-gray-50">
+                <div className="max-w-6xl mx-auto reveal">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Psicología del Anuncio Digital</h2>
+                        <p className="text-lg text-gray-600 max-w-3xl mx-auto">El diseño persuasivo no manipula, sino que entiende y se alinea con los atajos mentales y motivaciones del usuario para guiarlo hacia una acción.</p>
+                    </div>
+                    <div className="mb-20">
+                        <h3 className="text-3xl font-bold font-serif mb-10 text-center">Principios de Persuasión de Cialdini</h3>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {[
+                                { icon: 'gift', title: 'Reciprocidad', description: 'La tendencia a devolver favores. Ofrecer valor primero crea una obligación social positiva.', application: 'Ofrece un ebook gratuito o una plantilla útil en tu anuncio para incentivar el clic y la buena voluntad.' },
+                                { icon: 'shield-check', title: 'Autoridad', description: 'Confiamos en los expertos. La gente sigue las recomendaciones de figuras creíbles.', application: 'Usa frases como "Recomendado por expertos" o muestra logos de certificaciones o medios que te respaldan.' },
+                                { icon: 'heart', title: 'Simpatía (Liking)', description: 'Es más probable que digamos "sí" a personas que nos agradan. Nos gustan quienes son similares a nosotros o nos halagan.', application: 'Utiliza imágenes con personas que representen a tu público objetivo. Un lenguaje cercano y amigable también ayuda.' },
+                                { icon: 'users', title: 'Prueba Social', description: 'Seguimos las acciones de la multitud. Si muchos lo hacen, debe ser bueno.', application: 'Incluye testimonios ("¡El mejor curso!") o cifras ("+10,000 clientes satisfechos") en tus banners.' },
+                                { icon: 'gem', title: 'Escasez', description: 'Valoramos más lo que es limitado. La urgencia impulsa a la acción para evitar perder la oportunidad.', application: 'Usa copys como "Oferta termina en 24h" o "Solo 10 plazas" junto a un diseño que refuerce la urgencia.' },
+                                { icon: 'repeat', title: 'Compromiso y Coherencia', description: 'Una vez que tomamos una pequeña decisión, tendemos a mantenernos consistentes con ella.', application: 'Invita a una acción de bajo compromiso primero (ej. "Ver video") antes de pedir una mayor (ej. "Comprar ahora").' }
+                            ].map(item => (
+                                <div key={item.title} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-xl hover:border-blue-300 hover:-translate-y-1.5 transition-all duration-300 flex flex-col reveal-child">
+                                    <i data-lucide={item.icon} className="w-8 h-8 mb-4 text-blue-600"></i>
+                                    <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
+                                    <p className="text-sm text-gray-600 mb-4 flex-grow">{item.description}</p>
+                                    <p className="text-xs font-semibold text-gray-800 bg-blue-50 p-3 rounded-md mt-auto"><strong>Aplicación:</strong> {item.application}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-3xl font-bold font-serif mb-10 text-center">Sesgos Cognitivos Clave en Diseño</h3>
+                        <div className="grid md:grid-cols-2 gap-8">
+                            {[
+                                { icon: 'anchor', title: 'Efecto Anclaje', description: 'La primera información que vemos influye desproporcionadamente en nuestra decisión.', application: 'En una tabla de precios, muestra siempre el plan más caro (Premium) primero para "anclar" un valor alto en la mente del usuario.' },
+                                { icon: 'trending-down', title: 'Aversión a la Pérdida', description: 'Nos duele más perder algo que la alegría de ganar lo mismo. El miedo a perder es un gran motivador.', application: 'En un carrito de compra, muestra un mensaje como "No te pierdas el envío gratis, solo te faltan $10".' },
+                                { icon: 'eye', title: 'Efecto de Mera Exposición', description: 'Desarrollamos una preferencia por las cosas simplemente porque nos resultan familiares.', application: 'Usa campañas de retargeting con anuncios visualmente consistentes para que tu marca se vuelva familiar y confiable.' },
+                                { icon: 'shuffle', title: 'Paradoja de la Elección', description: 'Demasiadas opciones pueden llevar a la parálisis y la insatisfacción. Menos es más.', application: 'En lugar de mostrar 20 productos en un carrusel, selecciona los 3 más vendidos y enfoca el diseño en sus beneficios.' },
+                                { icon: 'box-select', title: 'Efecto de Encuadre (Framing)', description: 'La forma en que se presenta la información afecta cómo la percibimos.', application: 'Es más persuasivo decir "85% libre de grasa" que "Contiene 15% de grasa", aunque sea lo mismo. Enfoca el diseño en el beneficio.' },
+                                { icon: 'search-check', title: 'Sesgo de Confirmación', description: 'Tendemos a buscar y favorecer información que confirma nuestras creencias existentes.', application: 'Si tu audiencia valora la sostenibilidad, diseña anuncios que resalten los aspectos ecológicos de tu producto para reforzar su decisión.' }
+                            ].map(item => (
+                                <div key={item.title} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-xl hover:border-green-300 hover:-translate-y-1.5 transition-all duration-300 flex flex-col reveal-child">
+                                    <div className="flex items-start gap-4">
+                                        <i data-lucide={item.icon} className="w-10 h-10 mb-3 text-green-600 flex-shrink-0"></i>
+                                        <div>
+                                          <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
+                                          <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs font-semibold text-gray-800 bg-green-50 p-3 rounded-md mt-auto"><strong>Aplicación:</strong> {item.application}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            {/* SECCIÓN: Herramientas y Flujo de Trabajo */}
+            <section id="herramientas" className="py-20 px-6 bg-white border-y border-gray-200">
+                <div className="max-w-4xl mx-auto reveal">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Flujo de Trabajo y Herramientas</h2>
+                        <p className="text-lg text-gray-600">El stack tecnológico para la creación de contenido digital y campañas de marketing.</p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="figma" className="w-10 h-10 mx-auto mb-2 text-pink-500"></i><p className="font-semibold">Figma / Sketch</p><p className="text-xs text-gray-500">Diseño de Banners y UI</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="clapperboard" className="w-10 h-10 mx-auto mb-2 text-purple-500"></i><p className="font-semibold">Adobe After Effects</p><p className="text-xs text-gray-500">Animación y Video Ads</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="camera" className="w-10 h-10 mx-auto mb-2 text-blue-700"></i><p className="font-semibold">Adobe Photoshop</p><p className="text-xs text-gray-500">Edición de Imagen</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="pen-tool" className="w-10 h-10 mx-auto mb-2 text-orange-500"></i><p className="font-semibold">Adobe Illustrator</p><p className="text-xs text-gray-500">Iconos e Ilustraciones</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="mail" className="w-10 h-10 mx-auto mb-2 text-teal-500"></i><p className="font-semibold">Mailchimp / Klaviyo</p><p className="text-xs text-gray-500">Plataformas de Email</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="layout-dashboard" className="w-10 h-10 mx-auto mb-2 text-indigo-500"></i><p className="font-semibold">Meta Business Suite</p><p className="text-xs text-gray-500">Gestión de Anuncios</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="clipboard-check" className="w-10 h-10 mx-auto mb-2 text-gray-800"></i><p className="font-semibold">Asana / Trello</p><p className="text-xs text-gray-500">Gestión de Proyectos</p></div>
+                        <div className="p-4 bg-gray-50 border rounded-lg reveal-child"><i data-lucide="folder-check" className="w-10 h-10 mx-auto mb-2 text-green-600"></i><p className="font-semibold">Google Drive</p><p className="text-xs text-gray-500">Revisión y Aprobación</p></div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN DE MÉTRICAS MEJORADA */}
+            <section id="metricas" className="py-20 px-6">
+                <div className="max-w-5xl mx-auto reveal">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Métricas que Guían el Diseño</h2>
+                        <p className="text-lg text-gray-600 max-w-3xl mx-auto">Tu diseño no solo debe ser bonito, debe generar resultados. Entender estas métricas te convierte en un diseñador estratégico.</p>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 transition-all hover:shadow-lg hover:-translate-y-1 duration-300 reveal-child">
+                            <i data-lucide="trending-up" className="w-8 h-8 mb-4 text-indigo-500"></i>
+                            <h4 className="font-semibold text-lg mb-2">CTR (Click-Through Rate) - Tasa de Clics</h4>
+                            <p className="text-sm text-gray-600 mb-3"><strong>Qué es:</strong> El porcentaje de personas que hacen clic en tu anuncio después de verlo. (Clics / Impresiones) * 100.</p>
+                            <p className="text-sm text-gray-800 font-medium"><strong>Por qué le importa al diseñador:</strong> Es el indicador más directo de la capacidad de tu diseño para captar la atención y generar curiosidad. Un CTR bajo puede significar que el visual no es llamativo, el mensaje no es claro o el CTA no es visible.</p>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 transition-all hover:shadow-lg hover:-translate-y-1 duration-300 reveal-child">
+                            <i data-lucide="target" className="w-8 h-8 mb-4 text-indigo-500"></i>
+                            <h4 className="font-semibold text-lg mb-2">Conversion Rate - Tasa de Conversión</h4>
+                            <p className="text-sm text-gray-600 mb-3"><strong>Qué es:</strong> El porcentaje de personas que completan una acción deseada (compra, registro) después de hacer clic en el anuncio.</p>
+                            <p className="text-sm text-gray-800 font-medium"><strong>Por qué le importa al diseñador:</strong> Mide la efectividad final de tu promesa visual. Si el CTR es alto pero la conversión es baja, puede haber una desconexión entre lo que el anuncio promete (diseño, oferta) y lo que la página de destino entrega.</p>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 transition-all hover:shadow-lg hover:-translate-y-1 duration-300 reveal-child">
+                            <i data-lucide="dollar-sign" className="w-8 h-8 mb-4 text-indigo-500"></i>
+                            <h4 className="font-semibold text-lg mb-2">ROAS (Return On Ad Spend) - Retorno de la Inversión</h4>
+                            <p className="text-sm text-gray-600 mb-3"><strong>Qué es:</strong> Mide los ingresos generados por cada dólar gastado en publicidad. Es la métrica de rentabilidad por excelencia.</p>
+                            <p className="text-sm text-gray-800 font-medium"><strong>Por qué le importa al diseñador:</strong> Un diseño altamente persuasivo que atrae al público correcto puede aumentar drásticamente el ROAS, demostrando el valor económico directo del trabajo creativo.</p>
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-lg p-6 transition-all hover:shadow-lg hover:-translate-y-1 duration-300 reveal-child">
+                            <i data-lucide="heart" className="w-8 h-8 mb-4 text-indigo-500"></i>
+                            <h4 className="font-semibold text-lg mb-2">Engagement Rate - Tasa de Interacción</h4>
+                            <p className="text-sm text-gray-600 mb-3"><strong>Qué es:</strong> En redes sociales, mide la suma de likes, comentarios, compartidos y guardados, dividida por el alcance o las impresiones.</p>
+                            <p className="text-sm text-gray-800 font-medium"><strong>Por qué le importa al diseñador:</strong> Indica si el diseño resuena cultural y emocionalmente con la audiencia. Un diseño que genera conversación es un activo de marca valioso más allá del clic inmediato.</p>
+                        </div>
+                         <div className="bg-white border border-gray-200 rounded-lg p-6 transition-all hover:shadow-lg hover:-translate-y-1 duration-300 md:col-span-2 reveal-child">
+                            <i data-lucide="brain-circuit" className="w-8 h-8 mb-4 text-indigo-500"></i>
+                            <h4 className="font-semibold text-lg mb-2">Ad Recall Lift - Incremento en el Recuerdo del Anuncio</h4>
+                            <p className="text-sm text-gray-600 mb-3"><strong>Qué es:</strong> Mide cuántas personas más recuerdan haber visto tu anuncio en comparación con un grupo de control que no lo vio. Se mide con encuestas en la plataforma.</p>
+                            <p className="text-sm text-gray-800 font-medium"><strong>Por qué le importa al diseñador:</strong> Es la prueba de fuego de la memorabilidad de tu diseño. Un visual potente, un concepto único o una animación sorprendente pueden lograr que tu marca se quede en la mente del consumidor, incluso si no hacen clic.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN DE ASPECTOS LEGALES */}
+            <section id="legales" className="py-20 px-6 bg-white border-y border-gray-200">
+                <div className="max-w-4xl mx-auto reveal">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Publicidad Digital y Legalidad</h2>
+                        <p className="text-lg text-gray-600">Diseñar para publicidad implica responsabilidades. Conoce las reglas para proteger a tu cliente y a ti mismo.</p>
+                    </div>
+                    <div className="space-y-6">
+                        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm reveal-child"><h4 className="font-semibold text-lg mb-2">Derechos de Imagen y Música</h4><p className="text-sm text-gray-600">Asegúrate de que todas las fotos, videos y canciones que uses tengan una licencia comercial. Usar contenido sin permiso puede acarrear demandas millonarias.</p></div>
+                        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm reveal-child"><h4 className="font-semibold text-lg mb-2">Publicidad Engañosa</h4><p className="text-sm text-gray-600">Las afirmaciones en tus anuncios deben ser veraces y comprobables. Evita superlativos como "el mejor del mundo" si no puedes demostrarlo. La transparencia es clave.</p></div>
+                        <div className="p-6 bg-gray-50 border rounded-lg shadow-sm reveal-child"><h4 className="font-semibold text-lg mb-2">Normativas de Plataformas (Ad Policies)</h4><p className="text-sm text-gray-600">Cada plataforma (Meta, Google, TikTok) tiene sus propias reglas sobre qué se puede anunciar. Por ejemplo, existen restricciones sobre salud, finanzas y contenido para adultos. Conocerlas evita que tus anuncios sean rechazados.</p></div>
+                    </div>
+                </div>
+            </section>
+            
+            {/* Sección de Eventos */}
+            <section id="eventos" className="py-20 px-6">
+                <div className="max-w-4xl mx-auto reveal">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold font-serif mb-4">Calendario de Eventos Clave 2025-2026</h2>
+                        <p className="text-lg text-gray-600">Mantente conectado con la industria, aprende de los líderes y encuentra nueva inspiración en los eventos más importantes del mundo.</p>
+                    </div>
+                    <div className="space-y-8">
+                        <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-yellow-600">26-27 de Agosto, 2025</p>
+                            <h4 className="text-xl font-bold my-1">Webcongress - Bogotá, CO</h4>
+                            <p className="text-gray-600">El evento líder en marketing digital y tecnología en Latinoamérica. Ideal para entender las últimas tendencias que impactan al branding digital.</p>
+                        </div>
+                        <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-red-600">13-15 de Octubre, 2025</p>
+                            <h4 className="text-xl font-bold my-1">Adobe MAX - Los Angeles, CA</h4>
+                            <p className="text-gray-600">La conferencia de creatividad más grande del mundo. Un escaparate de las herramientas y técnicas que definirán el futuro del diseño.</p>
+                        </div>
+                        <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-indigo-600">13-21 de Marzo, 2026</p>
+                            <h4 className="text-xl font-bold my-1">SXSW Conference - Austin, TX</h4>
+                            <p className="text-gray-600">Un festival icónico que fusiona tecnología, cine, música y cultura. Su track de "Advertising & Brand Experience" es una referencia obligada.</p>
+                        </div>
+                        <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-purple-600">Abril, 2026 (Fechas por confirmar)</p>
+                            <h4 className="text-xl font-bold my-1">Milan Design Week - Milán, IT</h4>
+                            <p className="text-gray-600">El evento de diseño más grande e influyente del mundo. El epicentro donde nacen las tendencias globales en mobiliario, producto y visuales.</p>
+                        </div>
+                         <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-blue-600">Mayo, 2026 (Fechas por confirmar)</p>
+                            <h4 className="text-xl font-bold my-1">OFFF Festival - Barcelona, ES</h4>
+                            <p className="text-gray-600">Un festival de culto que celebra la creatividad post-digital. Imprescindible para la inspiración en motion graphics, arte y diseño de vanguardia.</p>
+                        </div>
+                        <div className="p-6 bg-white border border-gray-200 rounded-lg reveal-child">
+                            <p className="text-sm font-semibold text-orange-600">Junio, 2026 (Fechas por confirmar)</p>
+                            <h4 className="text-xl font-bold my-1">Cannes Lions Festival of Creativity - Cannes, FR</h4>
+                            <p className="text-gray-600">El festival de publicidad y comunicación creativa más prestigioso del mundo. Ganar un León de Cannes es el máximo reconocimiento en la industria.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+          </main>
+
+          <footer className="bg-white py-12 px-6 border-t border-gray-200 mt-20">
+            <div className="max-w-7xl mx-auto text-center reveal">
+              <h4 className="text-2xl font-bold font-serif mb-2">Digital Canvas</h4>
+              <p className="text-gray-500 text-sm">Diseñando experiencias que convierten.</p>
+            </div>
+          </footer>
+        </div>
+      );
+    };
+
+    // =============== RENDERIZAR LA APP ===============
+    ReactDOM.createRoot(document.getElementById('root')).render(<BrandingProApp />);
+  </script>
+</body>
+</html>
